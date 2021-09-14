@@ -1,9 +1,6 @@
 鏡像安裝
 -i http://pypi.douban.com/simple --trusted-host pypi.douban.com
- 
- 
 -i https://pypi.tuna.tsinghua.edu.cn/simple --trusted-host pypi.tuna.tsinghua.edu.cn
- 
 -i https://pypi.mirrors.ustc.edu.cn --trusted-host pypi.mirrors.ustc.edu.cn 
  
 本地安裝
@@ -12,3 +9,50 @@ cd Flask-WTF-0.10.0
 python setup.py build
 python setup.py install 
 Python uninstall 
+
+打包
+pyinstaller -F  --clean  --hidden-import pkg_resources.py2_warn 
+
+賦值
+fin.iloc[47,26] = fin.iloc[46,26]
+
+禁用科學符號
+pd.set_option('display.float_format',lambda x : '%.2f' % x)
+
+使用xlwings
+import xlwings as xw
+wb = xw.Book(r'D:\test.xlsx')
+sht = wb.sheets['Sheet1']
+sht.range('A1').value = hourSL
+sht.range('A1').options(pd.DataFrame, expand='table').value
+wb.save()
+
+判斷是否為數字
+.astype(str).str.isnumeric()
+
+第一列變表頭
+data_h.columns = data_h.iloc[0]
+data_h = data_h[1:][:]
+
+讀大CSV用
+def read_single_csv(input_path):
+    df_chunk = pd.read_csv(input_path,chunksize=1000)
+    res_chunk = []
+    for chunk in df_chunk:
+        res_chunk.append(chunk)
+    res_df = pd.concat(res_chunk)
+    return res_df
+
+陣列倒過來
+s[::-1]
+
+合併Excel
+wb1 = xw.Book(excel_name1)
+sht1 = wb1.sheets[0]
+wb2 = xw.Book(excel_name2)
+sht2 = wb2.sheets[0]
+wb3 = xw.Book(excel_name3)
+sht3 = wb3.sheets[0]
+sht3.api.Copy(Before = sht1.api)
+sht2.api.Copy(Before = sht1.api)
+
