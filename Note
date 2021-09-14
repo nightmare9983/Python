@@ -1,0 +1,14 @@
+鏡像安裝
+-i http://pypi.douban.com/simple --trusted-host pypi.douban.com
+ 
+ 
+-i https://pypi.tuna.tsinghua.edu.cn/simple --trusted-host pypi.tuna.tsinghua.edu.cn
+ 
+-i https://pypi.mirrors.ustc.edu.cn --trusted-host pypi.mirrors.ustc.edu.cn 
+ 
+本地安裝
+tar -zxvf Flask-WTF-0.10.0.tar.gz
+cd Flask-WTF-0.10.0
+python setup.py build
+python setup.py install 
+Python uninstall 
