@@ -56,3 +56,25 @@ sht3 = wb3.sheets[0]
 sht3.api.Copy(Before = sht1.api)
 sht2.api.Copy(Before = sht1.api)
 
+時間
+import datetime
+today = datetime.date.today()
+year = today.strftime('%y')
+year = '20' + year
+month = today.strftime('%m')
+day = today.strftime('%d')
+oneday = datetime.timedelta(days=1) 
+yester = today - oneday
+yesteryear = yester.strftime('%y')
+yesteryear = '20' + yesteryear
+yestermonth = yester.strftime('%m')
+yesterday = yester.strftime('%d')
+
+from dateutil.relativedelta import relativedelta 
+next_year='20'+(today+relativedelta(months=1)).strftime('%y')
+next_month=(today+relativedelta(months=1)).strftime('%m')
+next_day=(today+relativedelta(months=1)).strftime('%d')
+row_date=yesteryear+'-'+yestermonth+'-01'
+row_date="{d '" +row_date+"'}"
+next_row_date=next_year+'-'+next_month+'-01'
+next_row_date="{d '" +next_row_date+"'}"
