@@ -1,0 +1,214 @@
+from selenium import webdriver
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions
+from selenium.webdriver.common.by import By
+from os.path import isfile, isdir, join
+import os
+import time
+import pandas as pd
+import re
+from tqdm.notebook import tqdm
+import threading
+
+s = '*\/:?"<>|'
+
+# 取得所有網址
+
+prefs = {'profile.default_content_settings.popups': 0, 'download.default_directory': r'D:\mobile01'}
+url='https://www.mobile01.com/googlesearch.php?q=%E9%81%A0%E5%82%B3'
+options = webdriver.ChromeOptions()
+options.add_experimental_option('prefs', prefs)
+# driver = webdriver.Chrome(chrome_options=options)
+try:
+    driver = webdriver.Chrome(r'X:\CC-Automatic\chromedriver\90\chromedriver.exe',chrome_options=options)
+except:
+    pass
+driver.get(url)
+# driver.find_element_by_id('ctl00_m_g_e96d3d6c_8ae3_4a7f_8db2_b567b9f3a256_GVResult_ctl03_HypView').click()
+# # 更改視窗控制權
+# all_windows = driver.window_handles
+# driver.switch_to_window(all_windows[1]) 
+
+driver.find_elements(By.TAG_NAME, "span")[4].click() # 點選擇主分類
+
+driver.find_elements(By.TAG_NAME, "span")[6].click() # 點手機
+
+driver.find_elements(By.TAG_NAME, "span")[26].click() # 點請選擇次分類
+
+js = 'document.getElementsByTagName("span")[35].click()'
+driver.execute_script(js)  # 點行動通訊與資費
+
+driver.find_elements(By.TAG_NAME, "button")[0].click() # 點搜尋
+
+driver.find_elements_by_class_name('gsc-selected-option')[0].click() # 點關聯性
+
+js = 'document.getElementsByClassName("gsc-option")[1].click()'
+driver.execute_script(js)  # 點日期
+
+total_str = driver.find_elements_by_class_name('gsc-cursor-page')[-1].text
+total = int(total_str)
+total #頁數
+
+# item = driver.find_elements_by_class_name('gsc-thumbnail-inside')
+# item_num = len(item)
+# item_num #項數
+
+file_path = r'D:\url.txt'
+if os.path.exists(file_path):
+    os.remove(file_path)
+
+click_num = 0
+while click_num < total:
+    driver.find_elements_by_class_name('gsc-cursor-page')[click_num].click()
+    click_num += 1
+    time.sleep(5)
+    
+    driver_classname_url = driver.find_elements(By.XPATH ,"//div[@class='gs-bidi-start-align gs-visibleUrl gs-visibleUrl-long']")
+    driver_classname_time = driver.find_elements(By.XPATH ,"//div[@class='gs-bidi-start-align gs-snippet']")
+    
+    for i in range(len(driver_classname_time)-1):
+        temp_time = driver_classname_time[i].text.split('年')[0]
+        if temp_time == '2019' :
+            click_num = total
+        else :
+            print(driver_classname_time[i].text.split('...')[0])
+            print(driver_classname_url[0+i*2].text)
+            with open(file_path, 'a', encoding='utf-8') as f:
+                f.write(driver_classname_url[0+i*2].text + '\n')
+driver.quit()
+
+# 移除重複網址
+
+url_txt = pd.read_csv(r'D:\url.txt',sep='\n',header=None)
+url_txt = url_txt.rename(columns={0: "web"})
+
+url_txt['web'] = url_txt['web'].astype(str)
+url_txt['web'] = url_txt['web'].str.split('&p=',expand = True)[0]
+
+url_txt = url_txt.drop_duplicates(['web'],'first').reset_index(drop=True)
+
+# 分成六份
+
+url_txt1 = pd.DataFrame()
+url_txt2 = pd.DataFrame()
+url_txt3 = pd.DataFrame()
+url_txt4 = pd.DataFrame()
+url_txt5 = pd.DataFrame()
+url_txt6 = pd.DataFrame()
+
+url_txt1['web'] = url_txt['web'][:6]
+url_txt2['web'] = url_txt['web'][6:12]
+url_txt3['web'] = url_txt['web'][12:18]
+url_txt4['web'] = url_txt['web'][18:24]
+url_txt5['web'] = url_txt['web'][24:30]
+url_txt6['web'] = url_txt['web'][30:36]
+
+all_url_txt = [url_txt1['web'],url_txt2['web'],url_txt3['web'],url_txt4['web'],url_txt5['web'],url_txt6['web']]
+
+all_url_txt[0]
+
+# times = 0
+# progress = tqdm(total = len(url_txt['web']))
+# for web in range(len(url_txt['web'])):
+#         driver = webdriver.Chrome()
+#         driver.get(url)
+#         time.sleep(5)
+        
+#         all_comments = []
+        
+#         try:
+#             total_str = driver.find_elements(By.XPATH ,"//a[@class='c-pagination ']")[-1].text
+#             total = int(total_str) #頁數
+#         except:
+#             total = 1
+            
+#         title_comments = driver.find_elements(By.XPATH ,"//h1[@class='t2']")[0].text
+#         title_comments = re.findall(r'[^\*"/:?\\|<>]',title_comments,re.S) 
+#         title_comments = "".join(title_comments)
+#         first_comment = driver.find_elements(By.XPATH ,"//div[@itemprop='articleBody']")[0].text
+        
+#         click_num = 0
+#         while click_num < total:
+#             item = driver.find_elements(By.XPATH ,"//article[@class='u-gapBottom--max c-articleLimit']")
+#             item_num = len(item) #項數
+
+#             for i in range(item_num):
+#                 all_comments.append(item[i].text)
+
+#             next = driver.find_elements(By.XPATH ,"//a[@class='c-pagination c-pagination--next']")
+            
+#             if total == 1 :
+#                 break
+#             elif next != [] :
+#                 next[0].click() # 點下一頁
+                
+#             click_num += 1
+#             time.sleep(5)
+
+#         all_comments = pd.DataFrame(all_comments)
+#         all_comments.to_csv(r'D:\mobile01' + '//' + title_comments + '.csv',header = None,encoding='utf_8_sig',index=False)
+
+#         driver.quit()
+    
+#     times += 1
+#     progress.update(1)
+
+# Thread 六線程爬蟲
+
+def main(index):
+    urls = all_url_txt[index-1]
+    for url in urls:
+        driver = webdriver.Chrome()
+        driver.get(url)
+        time.sleep(5)
+        
+        all_comments = []
+        
+        try:
+            total_str = driver.find_elements(By.XPATH ,"//a[@class='c-pagination ']")[-1].text
+            total = int(total_str) #頁數
+        except:
+            total = 1
+            
+        title_comments = driver.find_elements(By.XPATH ,"//h1[@class='t2']")[0].text
+        title_comments = re.findall(r'[^\*"/:?\\|<>]',title_comments,re.S) 
+        title_comments = "".join(title_comments)
+        first_comment = driver.find_elements(By.XPATH ,"//div[@itemprop='articleBody']")[0].text
+        
+        click_num = 0
+        while click_num < total:
+            item = driver.find_elements(By.XPATH ,"//article[@class='u-gapBottom--max c-articleLimit']")
+            item_num = len(item) #項數
+
+            for i in range(item_num):
+                all_comments.append(item[i].text)
+
+            next = driver.find_elements(By.XPATH ,"//a[@class='c-pagination c-pagination--next']")
+            
+            if total == 1 :
+                break
+            elif next != [] :
+                next[0].click() # 點下一頁
+                
+            click_num += 1
+            time.sleep(5)
+
+        all_comments = pd.DataFrame(all_comments)
+        all_comments.to_csv(r'D:\mobile01' + '//' + title_comments + '.csv',header = None,encoding='utf_8_sig',index=False)
+
+        driver.quit()
+
+global threads
+threads = {}
+for index in range(1, 7):
+    threads['Thread_' + str(index)] = 0
+    thread = threading.Thread(target=main, args=(index,))
+    thread.start()
+
+# 合併文章
+
+mypath = r'D:\mobile01'
+files = os.listdir(mypath)
+
+files
+
