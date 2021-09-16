@@ -1,0 +1,217 @@
+import os
+import csv
+import pyodbc
+import pandas as pd
+import xlwings as xw
+
+[x for x in pyodbc.drivers() if x.startswith('Microsoft Access Driver')]
+
+path=r'X:\CC-Automatic\DataBase\202011_CWC report.accdb'
+# path=r'\\RPC20070007\cwc\舊資料\2019\201905_CWC report.accdb'
+
+cnxn = pyodbc.connect('DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=' + path + ';PWD=7461Tig')
+crsr = cnxn.cursor()
+
+# for row in crsr.columns(table='_當月CWC'):
+#     print(row.column_name)
+# for row in crsr.columns(table='201905'):
+#     print(row.column_name)
+
+sql = "SELECT * FROM _當月CWC"
+# sql = "SELECT * FROM 201905"
+
+# DELETE Date >= #8/10/2020#
+
+data = pd.read_sql(sql,cnxn)
+
+data = data[['Date','Mobile_Phone_Num','Subscirber ID','Account_NO','Actual_Start_Date','Actual_Comp_Date','門號狀態','客戶等級',
+             'Product Type','Item_Description1','Item_Description2','Item_Description3','Comments','語音費率','數據費率']]
+
+# ch = data[(data['Item_Description3']=='7003141001 揚言申訴-處理後續')|
+#           (data['Item_Description3']=='7003141002 揚言申訴-有共識處理完成並提報')|
+#           (data['Item_Description3']=='7003141003 揚言申訴-無共識通報主任')|
+#           (data['Item_Description3']=='7003141004 揚言申訴-轉接/通報主任')|
+#           (data['Item_Description3']=='7003128001 直營門市/特約加盟/經銷商/相關問題')|
+#           (data['Item_Description3']=='7003128005 流程相關')|
+#           (data['Item_Description3']=='7003128006 特殊客戶相關')|
+#           (data['Item_Description3']=='7003128007 重大客戶抱怨通報')|
+#           (data['Item_Description3']=='7003128009 帳務相關')|
+#           (data['Item_Description3']=='7003128010 促銷相關')|
+#           (data['Item_Description3']=='7003128011 催收相關')|
+#           (data['Item_Description3']=='7003128012 網路相關')|
+#           (data['Item_Description3']=='7003128013 轉接主管(限主管專用)')
+#          ].reset_index(drop = True)
+
+# data = data.drop_duplicates(['Actual_Comp_Date','Subscirber ID','Comments']).reset_index(drop = True)
+
+data = data.drop_duplicates().reset_index(drop = True)
+
+len(data)
+
+cwc3_1 = pd.read_excel(r'D:\CWC-分類.xlsx',sheet_name = 0)
+cwc3_2 = pd.read_excel(r'D:\CWC-分類.xlsx',sheet_name = 1)
+cwc3_3 = pd.read_excel(r'D:\CWC-分類.xlsx',sheet_name = 2)
+
+cwc3 = pd.concat([cwc3_1,cwc3_2,cwc3_3],axis = 0).drop_duplicates().reset_index(drop = True)
+
+cwc3 = cwc3[['L1編碼', 'L1名稱', '類型']]
+
+cwc3['Item_Description1'] = cwc3['L1編碼'].astype(str) + ' ' + cwc3['L1名稱']
+
+cwc3 = cwc3[['Item_Description1','類型']].drop_duplicates().reset_index(drop = True)
+
+cwc3 = cwc3[cwc3['類型']=='通訊問題'].drop_duplicates().reset_index(drop = True)
+
+cwc3
+
+len(data)
+
+netq = pd.merge(data,cwc3,how = 'inner',on = 'Item_Description1').drop_duplicates().reset_index(drop = True)
+
+netq
+
+netq.to_excel(r'X:\CC-Automatic\訊號類分析\CWC_202011.xlsx',index = False)
+
+# sql = "SELECT Actual_Comp_Date,Actual_Start_Date,Item_Description2,Item_Description3,[Staff_Name(員工編號)] FROM _當月CWC WHERE [Staff_Name(員工編號)]='72587'"
+
+cnxn.close()
+
+# print('`````````````` goods ``````````````')
+# for table_info in crsr.tables(tableType='TABLE'):
+#     print(table_info.table_name)
+
+# for row in crsr.columns(table='_當月CWC'):
+#     print(row.column_name)
+
+print('請輸入關鍵字，若有多個請用空格隔開')
+keywords = input()
+
+print('請輸入關鍵模式，AND或是OR')
+AndOr = input()
+
+keywords_split = str(keywords).split(' ')
+
+
+
+for i in range(len(keywords_split)):
+    if i == 0:
+        sql = "SELECT * FROM _當月CWC WHERE (Comments LIKE '%" + keywords_split[i] + "%') "
+    else:
+        sql +=  AndOr + " (Comments LIKE '%" + keywords_split[i] + "%')"
+
+sql
+
+df = pd.read_sql(sql,cnxn)
+
+save_path = r'X:\CC-Automatic\關鍵字查詢結果' + '//' + yearmonth 
+for i in range(len(keywords_split)):
+    save_path += keywords_split[i]
+save_path += '.csv'
+
+save_path
+
+df.to_csv(save_path,index = False,encoding = 'ansi')
+
+num=0
+if AndOr=='OR':
+    for i in keywords_split:
+        test=df[df['Comments'].str.contains(i)][['Date']]
+        test['關鍵字']=i
+        test['次數']=len(df[df['Comments'].str.contains(i)][['Date']])
+        test=test.reset_index(drop=True)[:1]
+        if num==0:
+            temp=test
+            num+=1
+        else:
+            temp=pd.concat((temp,test),axis=0)
+else:
+    a=keywords.replace(' ','&')
+    temp=df[['Date']]
+    temp['關鍵字']=a
+    temp['次數']=len(df)
+    temp=temp.reset_index(drop=True)[:1]
+
+temp
+
+if AndOr=='OR':
+    temp_save_path = r'X:\CC-Automatic\關鍵字查詢結果' + '//' + yearmonth 
+    for i in range(len(keywords_split)):
+        temp_save_path += keywords_split[i]
+    temp_save_path += '_統計.csv'
+else:
+    temp_save_path = r'X:\CC-Automatic\關鍵字查詢結果' + '//' + yearmonth + a + '_統計.csv'
+
+temp_save_path
+
+temp.to_csv(temp_save_path,index = False,encoding = 'ansi')
+
+# 匯入Access
+
+data = pd.read_csv(r'C:\Users\johnliu1\Desktop\CWC_hitrate_rpt_NCP_20200421.csv',encoding='ansi')
+
+data.columns
+
+data['Comments'] = data['Comments'].str.encode('ansi', 'ignore').str.decode('ansi')
+data['Mobile_Phone_Num'] = data['Mobile_Phone_Num'].astype(str)
+
+data.to_csv(r'D:\\CWC_hitrate_rpt_NCP_20200421EN.csv',encoding='ansi',index=False)
+
+data_21.dtypes
+
+con = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=D:\\test.accdb;PWD=7461Tig')
+strSQL = "INSERT INTO [_當月CWC] SELECT * FROM [Excel 12.0 Xml;HDR=Yes;Database=D:\\CWC_hitrate_rpt_NCP_20200501.xlsx].[Sheet1$];"   
+cur = con.cursor()
+cur.execute(strSQL)
+con.commit()
+con.close()
+
+DBFile = r'X:\CC-Automatic\DataBase\202005_CWC report.accdb'
+exFile = r'D:\\CWC_hitrate_rpt_NCP_20200501.xlsx'
+
+conn = pyodbc.connect('DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};DBQ='+DBFile+';PWD=7461Tig')
+
+sql = """INSERT INTO _當月CWC
+         SELECT * FROM [Excel 12.0 Xml; HDR = Yes;Database={myfile}].[Sheet1$];
+      """
+
+curs = conn.cursor()
+curs.execute(sql.format(myfile = exFile))
+conn.commit()
+
+table_colname = []
+for row in cur.columns(table='TableName'):
+    table_colname.append(row.column_name)
+
+table_colname
+
+# strSQL = "INSERT INTO TableName(" 
+# for i in table_colname:
+#     strSQL += i + ","
+# strSQL += ") SELECT *  FROM [text;HDR=Yes;FMT=Delimited(,);Database=X:\CC-Automatic\DataBase\].CWC_hitrate_rpt_NCP_20200420EN.csv;"  
+# strSQL
+
+strSQL = "INSERT INTO test_當月CWC SELECT *  FROM [text;HDR=Yes;FMT=Delimited(,);Database=D:\\].CWC_hitrate_rpt_NCP_20200421EN.csv;"  
+strSQL
+
+strSQL = "INSERT INTO test_當月CWC SELECT *  FROM test2_當月CWC;"  
+strSQL
+
+con = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=X:\CC-Automatic\DataBase\202004_CWC report.accdb;PWD=7461Tig') 
+cur = con.cursor()
+cur.execute(strSQL)
+con.commit()
+con.close()
+
+print('請輸入年月，例如 202001')
+yearmonth = input()
+
+cnxn = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=X:\CC-Automatic\DataBase' + '//' + yearmonth + '_CWC report.accdb;PWD=7461Tig')
+crsr = cnxn.cursor()
+
+strSQL = "DROP TABLE _當月CWC"  
+strSQL
+
+crsr.execute(strSQL)
+cnxn.commit()
+cnxn.close()
+
