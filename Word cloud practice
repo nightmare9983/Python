@@ -1,0 +1,162 @@
+import pandas as pd
+import csv
+import time
+import datetime
+from datetime import datetime,timedelta
+import warnings
+warnings.filterwarnings('ignore')
+# import nltk
+# from nltk.tokenize import word_tokenize
+# from nltk.corpus import sentiwordnet as swn
+# from nltk.corpus import stopwords
+import jieba
+jieba.case_sensitive = True
+from tqdm.notebook import tqdm
+import re
+from PIL import Image
+import matplotlib.pyplot as plt
+from wordcloud import WordCloud, ImageColorGenerator
+import numpy as np
+from collections import Counter
+import qgrid
+
+# 讀取CWC資料
+
+data = pd.read_csv(r'C:\Users\johnliu1\Desktop\202003.txt',encoding = 'ansi')
+
+data.columns
+
+data['Comments'] = data['Comments'].fillna('')
+
+for i in data[data['Comments'].str.contains('光復南路')]['Comments']:
+    print(i)
+
+# 切半形全形
+
+comment_date = data['Date'].astype(str).str.split(' ',expand = True)[0]
+comment_date
+
+# comment=[]
+# times = 0
+# progress = tqdm(total = len(data))
+# for i in data.index:
+#     cleanText = "".join(c for c in data['Comments'][i] if c not in ('；','，','。','！','：','「','」','…','、','？','【','】',
+#                                                                     '.',':','[',']','{','}',"'",'"','(',')',' ','_',',','#',
+#                                                                     '$','*','＞','@','‧','→','＿','（','）','≒','∕','＋','”',
+#                                                                     '&','=','『','』','-','/','+','＃','＄','％','%','﹡','＊',
+#                                                                     'ˉ','﹐','﹑',"–","—","ˍ","　","!","＃","＄","%","％","＆",
+#                                                                     "﹡","＊","ˉ","﹐","﹑","．","/","／","﹕","﹔",";","?","＠",
+#                                                                     "＼","^","`","|","~","～","ˊ","ˇ","˙","’","“","‵","︳","〈",
+#                                                                     "〉","《","》","﹝","〔","﹞","〕","〝","〞","+","<","＜",
+#                                                                     "＝",">","×","÷","≦","≧","■","□","▲","◆","◎","●","↑",
+#                                                                     "↗","↓","←","│","┌","├","┤","§","·","★","※",))
+#     comment.append(cleanText)
+#     times = 1
+#     progress.update(1)
+
+rule = re.compile(r"[^a-zA-Z0-9\u4e00-\u9fa5]")
+comment=[]
+times = 0
+progress = tqdm(total = len(data))
+for i in data.index:
+    cleanText = rule.sub('',data['Comments'][i])
+    comment.append(cleanText)
+    times = 1
+    progress.update(1)
+
+# comment
+
+# Jieba
+
+jieba.set_dictionary(r'C:\ProgramData\Anaconda3\Lib\site-packages\jieba\dict-zh.txt')
+
+stopWords = {}.fromkeys([ line.rstrip() for line in open('C:/Users/johnliu1/Desktop/停用詞-繁體中文.txt', encoding='utf8')]) 
+
+myHash = {}
+final = ''
+times = 0
+# jieba.enable_paddle()
+progress = tqdm(total = len(comment))
+for num in range(len(comment)):
+    words = jieba.cut(comment[num], cut_all = False, use_paddle = True)
+    remainderWords = list(filter(lambda a: a not in stopWords and a != '\n', words))
+    date_words = [comment_date[num] + ' ' + j for j in remainderWords]
+    for word in date_words: 
+        if word in myHash:
+            myHash[word] += 1
+        else:
+            myHash[word] = 1
+    times += 1
+    progress.update(1)
+
+# pd.DataFrame.from_dict(myHash, orient='index')
+
+# 輸出成矩陣
+
+emotionword=[w for w in myHash]
+emotionword_time=[]
+for time in emotionword:
+    emotionword_time.append(myHash[time])    
+emotionword=pd.DataFrame(emotionword)
+emotionword_time=pd.DataFrame(emotionword_time)
+keyword=pd.concat((emotionword,emotionword_time),axis=1)
+keyword.columns=['關鍵字','次數']
+
+keyword_word = keyword['關鍵字'].str.split(' ',expand = True)[1]
+keyword_date = keyword['關鍵字'].str.split(' ',expand = True)[0]
+
+keyword = pd.concat((keyword_date,keyword),axis=1)
+keyword['關鍵字'] = keyword_word
+keyword = keyword.rename(columns={0: "日期"})
+keyword['日期'] = pd.to_datetime(keyword['日期'])
+keyword
+
+# keyword[keyword['關鍵字'] == 'OB'].sort_values(by = '日期')
+
+keyword.to_csv(r'C:\Users\johnliu1\Desktop\202003全形半形停用詞繁體paddlle.csv',encoding = 'ansi',index = False)
+
+# 查看差異
+
+Tran_data = pd.read_csv(r'C:\Users\johnliu1\Desktop\202003全形半形停用詞繁體paddlle.csv',encoding = 'ansi')
+simple_data = pd.read_csv(r'C:\Users\johnliu1\Desktop\202003全形半形停用詞繁體2.csv',encoding = 'ansi')
+
+len(Tran_data),len(simple_data)
+
+Tran_data['關鍵字'] = Tran_data['關鍵字'].fillna('')
+simple_data['關鍵字'] = simple_data['關鍵字'].fillna('')
+
+# Tran_data['MERGE']=Tran_data['日期']+' '+Tran_data['關鍵字']
+# simple_data['MERGE']=simple_data['日期']+' '+simple_data['關鍵字']
+
+Tran_data2 = Tran_data['關鍵字']
+simple_data2 = simple_data['關鍵字']
+
+Tran_data2 = set(Tran_data2)
+simple_data2 = set(simple_data2)
+
+list(simple_data2.difference(Tran_data2))
+
+# 文字雲
+
+cloud_data = pd.read_csv(r'X:\CC-Automatic\keyword_num.csv',encoding = 'utf-8')
+
+qgrid_widget = qgrid.show_grid(cloud_data, show_toolbar=True)
+qgrid_widget
+
+pic_words = cloud_data['關鍵字'].astype(str)
+
+font = r'msjh.ttc'
+
+mask = np.array(Image.open(r'D:\phone.png'))
+
+my_wordcloud = WordCloud(background_color="white",mask=mask,font_path=font,collocations=False, width=4800, height=4800, margin=2)
+
+my_wordcloud.generate_from_frequencies(frequencies=Counter(pic_words))
+
+plt.figure( figsize=(5,5), facecolor='k')
+plt.imshow(my_wordcloud,interpolation='bilinear')
+plt.axis("off")
+plt.tight_layout(pad=0)
+plt.show()
+
+# plt.savefig("Mayday_Wordcloud.png")
