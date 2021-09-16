@@ -1,0 +1,129 @@
+import pandas as pd
+import qgrid
+import re
+import time
+import datetime
+import jieba
+jieba.case_sensitive = True
+from tqdm.notebook import tqdm
+from PIL import Image
+import matplotlib.pyplot as plt
+from wordcloud import WordCloud, ImageColorGenerator
+import numpy as np
+from collections import Counter
+
+# callre = pd.read_csv(r'X:\CC-Automatic\call_reduction.csv',encoding='utf-8')
+# callre.drop_duplicates(inplace=True)
+
+# callre['類型(中文)'].value_counts()
+
+# call_value = callre[callre['類型(中文)']=='加值服務使用'].reset_index(drop=True)
+
+# call_value['Date'] = pd.to_datetime(call_value['Date'], errors='coerce')
+# call_value['month'] = call_value['Date'].dt.month
+
+# call_value.to_csv(r'X:\CC-Automatic\call_reduction_value.csv',encoding='utf-8',index=False)
+
+# call_value['Comments'].value_counts()
+
+# callgoman = callgoman[callgoman['Item_Description2']=='6010068 國外漫遊相關'].reset_index(drop=True)
+
+# callgoman.to_csv(r'X:\CC-Automatic\call_reduction_INT_6010068.csv',encoding='utf-8',index=False)
+
+# 讀檔斷詞
+
+call_value = pd.read_csv(r'X:\CC-Automatic\call_reduction_value.csv',encoding='utf-8')
+
+call_value = call_value.fillna('n99a')
+call_value = call_value[call_value['Comments']!='n99a'].reset_index(drop=True)
+
+rule = re.compile(r"[^a-zA-Z0-9\u4e00-\u9fa5]")
+comment=[]
+times = 0
+progress = tqdm(total = len(call_value))
+for i in call_value.index:
+    cleanText = rule.sub('',call_value['Comments'][i])
+    comment.append(cleanText)
+    times = 1
+    progress.update(1)
+
+jieba.set_dictionary(r'C:\ProgramData\Anaconda3\Lib\site-packages\jieba\dict-zh.txt')
+
+stopWords = {}.fromkeys([ line.rstrip() for line in open('D:/停用詞-繁體中文.txt', encoding='utf8')]) 
+
+# comment_date = call_value['Date'].astype(str).str.split(' ',expand = True)[0]
+# comment_date
+
+# myHash = {}
+# final = ''
+# times = 0
+# # jieba.enable_paddle()
+# progress = tqdm(total = len(comment))
+# for num in range(len(comment)):
+#     words = jieba.cut(comment[num], cut_all = False, use_paddle = False)
+#     remainderWords = list(filter(lambda a: a not in stopWords and a != '\n', words))
+#     date_words = [comment_date[num] + ' ' + j for j in remainderWords]
+#     for word in date_words: 
+#         if word in myHash:
+#             myHash[word] += 1
+#         else:
+#             myHash[word] = 1
+#     times += 1
+#     progress.update(1)
+
+# 純斷詞
+myHash = []
+final = ''
+times = 0
+# jieba.enable_paddle()
+progress = tqdm(total = len(comment))
+for num in range(len(comment)):
+    words = jieba.cut(comment[num], cut_all = False, use_paddle = False)
+    myHash.append(words)
+    times += 1
+    progress.update(1)
+
+myHash = pd.DataFrame(myHash)
+myHash.to_csv(r'D:\202001_04_value_keyHash.csv',encoding = 'utf-8-sig',index = False)
+
+# emotionword=[w for w in myHash]
+# emotionword_time=[]
+# for time in emotionword:
+#     emotionword_time.append(myHash[time])    
+# emotionword=pd.DataFrame(emotionword)
+# emotionword_time=pd.DataFrame(emotionword_time)
+# keyword=pd.concat((emotionword,emotionword_time),axis=1)
+# keyword.columns=['關鍵字','次數']
+
+# keyword_word = keyword['關鍵字'].str.split(' ',expand = True)[1]
+# keyword_date = keyword['關鍵字'].str.split(' ',expand = True)[0]
+
+# keyword = pd.concat((keyword_date,keyword),axis=1)
+# keyword['關鍵字'] = keyword_word
+# keyword = keyword.rename(columns={0: "日期"})
+# keyword['日期'] = pd.to_datetime(keyword['日期'])
+# keyword
+
+# keyword.to_csv(r'D:\202001_04_value.csv',encoding = 'utf-8-sig',index = False)
+
+# for i in callgoman[callgoman['Comments'].str.contains('自助')]['Comments']:
+#     print(i)
+
+import gensim
+from gensim.models import word2vec
+from gensim.models.word2vec import LineSentence
+
+myHash = pd.read_csv(r'D:\202001_04_value_keyHash.csv',encoding = 'ansi')
+
+myHash[:].T
+
+myHash = myHash[:].T.values.tolist()
+
+myHash[0]
+
+type(myHash)
+
+model = gensim.models.Word2Vec(myHash, min_count=1)
+
+model.most_similar("本人")
+
