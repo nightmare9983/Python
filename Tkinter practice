@@ -1,0 +1,106 @@
+import pyodbc
+import pandas as pd
+import tkinter as tk
+import time
+
+def SetValue():
+    yearmonth = height_entry.get()
+    keywords = weight_entry.get()
+    AndOr = 'OR' if radiovalue.get() else 'AND'
+        
+    cnxn = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=X:\CC-Automatic\排班\DataBase' + '//' + yearmonth + '_CWC report.accdb;PWD=7461Tig')
+    crsr = cnxn.cursor()
+    
+    keywords_split = str(keywords).split(' ')
+    for i in range(len(keywords_split)):
+        if i == 0:
+            sql = "SELECT * FROM _當月CWC WHERE (Comments LIKE '%" + keywords_split[i] + "%') "
+        else:
+            time.sleep(3)
+            sql +=  AndOr + " (Comments LIKE '%" + keywords_split[i] + "%')"
+            
+    df = pd.read_sql(sql,cnxn)
+    save_path = r'X:\CC-Automatic\排班\關鍵字查詢結果' + '//' + yearmonth 
+    for i in range(len(keywords_split)):
+        save_path += keywords_split[i]
+    save_path += '.csv'
+    df.to_csv(save_path,index = False,encoding = 'ansi')
+    
+    num=0
+    if AndOr == 'OR':
+        for i in keywords_split:
+            test=df[df['Comments'].str.contains(i)]['Date'].value_counts().reset_index()
+            test['關鍵字']=i
+
+
+            if num == 0:
+                temp = test
+                num += 1
+            else:
+                temp = pd.concat((temp,test),axis = 0)
+    
+        temp.columns=['Date','次數','關鍵字']
+        temp=temp[['Date','關鍵字','次數']]
+        temp=temp.reset_index(drop=True)
+        temp=temp.sort_values(['Date','關鍵字'])
+
+    else:
+        keyword_temp = keywords.replace(' ','&')
+        temp=df['Date'].value_counts().reset_index()
+        temp['關鍵字'] = keyword_temp
+        temp.columns=['Date','次數','關鍵字']
+        temp=temp[['Date','關鍵字','次數']].sort_values(by='Date')
+        
+    if AndOr == 'OR':
+        temp_save_path = r'X:\CC-Automatic\排班\關鍵字查詢結果' + '//' + yearmonth 
+        for i in range(len(keywords_split)):
+            temp_save_path += keywords_split[i]
+        temp_save_path += '_統計.csv'
+    else:
+        temp_save_path = r'X:\CC-Automatic\排班\關鍵字查詢結果' + '//' + yearmonth + keyword_temp + '_統計.csv'
+    temp.to_csv(temp_save_path,index = False,encoding = 'ansi')
+    
+    result = '查詢結果 : 找到' + str(len(df)) + '筆資料'
+    result_label.configure(text=result)
+
+window = tk.Tk()
+window.title('CWC關鍵字查詢')
+window.geometry('400x200')
+window.configure(background='white')
+# header_label = tk.Label(window, text='BMI 計算器')
+# header_label.pack()
+
+# 以下為 height_frame 群組
+height_frame = tk.Frame(window)
+# 向上對齊父元件
+# height_frame.pack(side=tk.TOP)
+height_frame.pack(side=tk.TOP)
+height_label = tk.Label(height_frame, text='請輸入年月，例如202001            ')
+height_label.pack(side=tk.LEFT)
+height_entry = tk.Entry(height_frame)
+height_entry.pack(side=tk.RIGHT)
+
+weight_frame = tk.Frame(window)
+weight_frame.pack(side=tk.TOP)
+weight_label = tk.Label(weight_frame, text='請輸入關鍵字，若有多個請用空格隔開')
+weight_label.pack(side=tk.LEFT)
+weight_entry = tk.Entry(weight_frame)
+weight_entry.pack(side=tk.RIGHT)
+
+header_label = tk.Label(window, text='若是一個Comment有多個關鍵字同時出現請選AND，其餘選OR')
+header_label.pack()
+
+item= {0:'AND', 1:'OR'}
+radiovalue = tk.IntVar()
+radiovalue.set(0)
+for i in range(len(item)):
+    tk.Radiobutton(window, variable = radiovalue, text=item[i], value = i).pack()
+    
+result_label = tk.Label(window)
+result_label.pack()
+
+calculate_btn = tk.Button(window, text='查詢',command=SetValue)
+calculate_btn.pack()
+
+window.mainloop()
+
