@@ -1,0 +1,27 @@
+buy_category = ['2','6','10','12','13','15','18','19','21','22','25','26','36','37','39','48']
+
+def read_single_csv(input_path):
+    df_chunk = pd.read_csv(input_path,chunksize=10000)
+    res_chunk = []
+    for chunk in df_chunk:
+        res_chunk.append(chunk)
+    res_df = pd.concat(res_chunk)
+    return res_df
+    
+data = read_single_csv(path + 'tbrain_cc_training_48tags_hash_final.csv')
+data = data[data.shop_tag.isin(buy_category)]
+data = data[['dt', 'chid', 'shop_tag', 'txn_cnt', 'txn_amt', 'cuorg', 'slam', 'gender_code', 'age']]
+data.columns = ['消費月份','顧客編號','消費類別','消費次數','消費金額','客戶來源','正卡信用額度','性別','年紀']
+
+per_data = data[['顧客編號','消費類別','消費次數']]
+per_data = per_data.reset_index(drop = True)
+
+output_data = []
+for cos_id in range(len(per_data['顧客編號'].unique())):
+    temp_data = per_data[per_data['顧客編號'] == per_data['顧客編號'][cos_id]].groupby(['顧客編號','消費類別']).sum()
+    temp_data_ = temp_data.sort_values('消費次數',ascending = False)[:3].reset_index()['消費類別']
+    temp_data__ = pd.DataFrame(temp_data_).T
+    temp_data__['顧客編號'] = str(per_data['顧客編號'][cos_id])
+    temp_data__ = temp_data__.set_index(['顧客編號']).reset_index()
+    output_data.append(temp_data__.values[0])
+    print(cos_id)
