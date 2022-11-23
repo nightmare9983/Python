@@ -1,0 +1,35 @@
+import os
+import xml.etree.ElementTree as ET
+
+def rename_file(path, re_path, extension): #讀取路徑，儲存路徑，副檔名
+    
+    fileist = os.listdir(path)
+
+    n = 0
+    for i in fileist:
+
+        oldname = path + os.sep + fileist[n]
+
+        newname = re_path + os.sep + 'A' + str(n + 1) + extension
+
+        os.rename(oldname, newname)
+        print(oldname,'======>', newname)
+
+        n += 1
+       
+def rename_xml_tag(path): #讀取路徑
+    
+    fileist = os.listdir(path)
+
+    n = 0
+    for i in fileist:
+
+        tree = ET.parse(path + os.sep + fileist[n])
+        root = tree.getroot()
+
+        sub = root.find("filename")           
+        sub.text = fileist[n]
+
+        tree.write(path + os.sep + fileist[n]) #覆蓋原本檔案
+
+        n += 1
